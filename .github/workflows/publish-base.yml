@@ -1,0 +1,27 @@
+# =============================================================================
+# Workflow: Publish Base Image
+# =============================================================================
+# Builds and publishes the xcloud-base container image to ghcr.io.
+# This workflow is triggered on pushes to the 'main' branch when files
+# in the 'base/' directory are changed.
+# =============================================================================
+name: 'Publish - Base Image'
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'base/**'
+
+  workflow_dispatch:
+
+jobs:
+  publish-base-image:
+    uses: ./.github/workflows/reusable-build-publish.yml
+    with:
+      image_name: 'xcloud-base'
+      dockerfile_path: './base/Podmanfile'
+      build_context: './base'
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}

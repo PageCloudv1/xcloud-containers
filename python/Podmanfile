@@ -1,0 +1,48 @@
+# =============================================================================
+# xCloud Python Development Image
+# =============================================================================
+# Imagem otimizada para desenvolvimento Python no ecossistema xCloud.
+# Inclui Python 3.11, uv, e ferramentas de desenvolvimento comuns.
+# =============================================================================
+FROM ghcr.io/pagecloudv1/xcloud-base:latest
+
+LABEL maintainer="xCloud Team <contact@xcloud.com>"
+LABEL description="Optimized Python development image for the xCloud ecosystem."
+LABEL version="1.0.0"
+
+# Instala Python e ferramentas de build
+RUN apk add --no-cache \
+    python3~=3.11 \
+    py3-pip \
+    python3-dev \
+    build-base \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/cache/apk/*
+
+# Instala 'uv' e ferramentas de dev Python
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir uv \
+    && uv pip install --system --no-cache-dir \
+    debugpy \
+    flake8 \
+    black \
+    isort \
+    pytest \
+    pytest-asyncio \
+    pytest-mock \
+    pytest-cov
+
+# Cria usuário não-root para segurança
+RUN addgroup -S xcloud && adduser -S xcloud -G xcloud
+
+# Cria diretórios de trabalho
+RUN mkdir -p /home/xcloud/app \
+    && chown -R xcloud:xcloud /home/xcloud
+
+WORKDIR /home/xcloud/app
+
+USER xcloud
+
+CMD ["/bin/bash"]

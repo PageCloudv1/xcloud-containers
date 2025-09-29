@@ -1,0 +1,28 @@
+# =============================================================================
+# Workflow: Publish Python Image
+# =============================================================================
+# Builds and publishes the xcloud-python container image to ghcr.io.
+# This workflow is triggered on pushes to the 'main' branch when files
+# in the 'python/' directory are changed.
+# =============================================================================
+name: 'Publish - Python Image'
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'python/**'
+      - 'base/**' # Rebuild if the base image changes
+
+  workflow_dispatch:
+
+jobs:
+  publish-python-image:
+    uses: ./.github/workflows/reusable-build-publish.yml
+    with:
+      image_name: 'xcloud-python'
+      dockerfile_path: './python/Podmanfile'
+      build_context: './python'
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}

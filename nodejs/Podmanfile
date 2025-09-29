@@ -1,0 +1,30 @@
+# =============================================================================
+# xCloud Node.js Development Image
+# =============================================================================
+# Imagem otimizada para desenvolvimento Node.js no ecossistema xCloud.
+# Inclui Node.js 20 e npm.
+# =============================================================================
+FROM ghcr.io/pagecloudv1/xcloud-base:latest
+
+LABEL maintainer="xCloud Team <contact@xcloud.com>"
+LABEL description="Optimized Node.js development image for the xCloud ecosystem."
+LABEL version="1.0.0"
+
+# Instala Node.js
+RUN apk add --no-cache \
+    nodejs~=20 \
+    npm \
+    && rm -rf /var/cache/apk/*
+
+# Cria usuário não-root para segurança
+RUN addgroup -S xcloud && adduser -S xcloud -G xcloud
+
+# Cria diretórios de trabalho
+RUN mkdir -p /home/xcloud/app \
+    && chown -R xcloud:xcloud /home/xcloud
+
+WORKDIR /home/xcloud/app
+
+USER xcloud
+
+CMD ["/bin/bash"]
