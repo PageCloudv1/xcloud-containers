@@ -19,7 +19,7 @@ on:
 
 jobs:
   publish-nodejs-image:
-    uses: ./.github/workflows/reusable-build-publish.yml@main
+    uses: ./.github/workflows/reusable-build-publish.yml@main@main
     with:
       image_name: 'xcloud-nodejs'
       dockerfile_path: './nodejs/Podmanfile'
