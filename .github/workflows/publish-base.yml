@@ -18,10 +18,10 @@ on:
 
 jobs:
   publish-base-image:
-    uses: ./.github/workflows/reusable-build-publish.yml@main
+    uses: ./.github/workflows/reusable-build-publish.yml
     with:
       image_name: 'xcloud-base'
-      dockerfile_path: './base/Podmanfile'
+      containerfile_path: './base/Podmanfile'
       build_context: './base'
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}

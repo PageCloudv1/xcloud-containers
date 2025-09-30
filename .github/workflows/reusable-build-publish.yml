@@ -1,7 +1,7 @@
 # =============================================================================
 # Reusable Workflow: Build and Publish Container Image
 # =============================================================================
-# This workflow builds a container image using Podman/Docker and publishes it
+# This workflow builds a container image using Podman tooling and publishes it
 # to the GitHub Container Registry (ghcr.io).
 #
 # It is designed to be called by other workflows.
@@ -20,8 +20,8 @@ on:
         required: false
         type: string
         default: 'latest'
-      dockerfile_path:
-        description: 'The path to the Podmanfile/Dockerfile'
+      containerfile_path:
+        description: 'The path to the Podmanfile/Containerfile'
         required: true
         type: string
       build_context:
@@ -45,27 +45,130 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
 
-      - name: 'Set up QEMU'
-        uses: docker/setup-qemu-action@v3
+      - name: 'Detect Local Act Run'
+        id: detect-act
+        run: |
+          if [ "${ACT:-}" = "true" ]; then
+            echo "is_act=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_act=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: 'Set up Docker Buildx'
-        uses: docker/setup-buildx-action@v3
+      - name: 'Install Podman tooling'
+        run: |
+          set -euo pipefail
+          if command -v podman >/dev/null 2>&1 && command -v buildah >/dev/null 2>&1; then
+            podman --version
+            buildah --version
+            exit 0
+          fi
+
+          if command -v sudo >/dev/null 2>&1; then
+            SUDO="sudo"
+          else
+            SUDO=""
+          fi
+
+          if command -v apt-get >/dev/null 2>&1; then
+            $SUDO apt-get update
+            $SUDO apt-get install -y podman buildah uidmap slirp4netns
+          elif command -v dnf >/dev/null 2>&1; then
+            $SUDO dnf -y install podman buildah uidmap slirp4netns
+          else
+            echo "Unsupported package manager" >&2
+            exit 1
+          fi
+
+          podman --version
+          buildah --version
+
+      - name: 'Configure Podman runtime directory'
+        run: |
+          set -euo pipefail
+          RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/podman-run-$(id -u)}"
+          mkdir -p "$RUNTIME_DIR"
+          chmod 700 "$RUNTIME_DIR"
+          echo "XDG_RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
+
+      - name: 'Determine target platforms'
+        id: build-platforms
+        run: |
+          if [ "${IS_ACT}" = "true" ]; then
+            echo "value=linux/amd64" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=linux/amd64,linux/arm64" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          IS_ACT: ${{ steps.detect-act.outputs.is_act }}
+
+      - name: 'Resolve base image reference'
+        id: base-image
+        run: |
+          if [ "${IS_ACT}" = "true" ]; then
+            echo "value=localhost/xcloud-base:latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=ghcr.io/${OWNER}/xcloud-base:latest" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          IS_ACT: ${{ steps.detect-act.outputs.is_act }}
+          OWNER: ${{ github.repository_owner }}
+
+      - name: 'Ensure base image is available locally'
+        if: ${{ steps.detect-act.outputs.is_act == 'true' && inputs.image_name != 'xcloud-base' }}
+        run: |
+          set -euo pipefail
+          TARGET="${BASE_IMAGE}"
+          if podman image exists "$TARGET"; then
+            echo "Base image $TARGET already present."
+            exit 0
+          fi
+
+          echo "::notice::Base image $TARGET not found locally. Building xcloud-base for local validation."
+          buildah bud --platform linux/amd64 \
+            --format oci \
+            -t localhost/xcloud-base:latest \
+            -f ./base/Podmanfile \
+            ./base
+
+          if [ "$TARGET" != "localhost/xcloud-base:latest" ]; then
+            podman tag localhost/xcloud-base:latest "$TARGET" || true
+          fi
+        env:
+          BASE_IMAGE: ${{ steps.base-image.outputs.value }}
+
+      - name: 'Build image with Buildah'
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ inputs.image_name }}
+          tags: ${{ inputs.image_tag }}
+          context: ${{ inputs.build_context }}
+          containerfiles: ${{ inputs.containerfile_path }}
+          platforms: ${{ steps.build-platforms.outputs.value }}
+          build-args: |
+            BASE_IMAGE=${{ steps.base-image.outputs.value }}
+          oci: true
 
       - name: 'Log in to GitHub Container Registry'
-        uses: docker/login-action@v3
+        if: ${{ steps.detect-act.outputs.is_act != 'true' }}
+        uses: redhat-actions/podman-login@v1
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.token }}
 
-      - name: 'Build and Push Image'
-        uses: docker/build-push-action@v5
+      - name: 'Push image to ghcr.io'
+        if: ${{ steps.detect-act.outputs.is_act != 'true' }}
+        uses: redhat-actions/push-to-registry@v2
         with:
-          context: ${{ inputs.build_context }}
-          file: ${{ inputs.dockerfile_path }}
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          registry: ghcr.io/${{ github.repository_owner }}
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+
+      - name: 'Report local build artifact'
+        if: ${{ steps.detect-act.outputs.is_act == 'true' }}
+        run: |
+          echo "Built image stored locally: ${IMAGE_NAME}:${IMAGE_TAG}"
+        env:
+          IMAGE_NAME: ${{ steps.build-image.outputs.image }}
+          IMAGE_TAG: ${{ steps.build-image.outputs.tags }}

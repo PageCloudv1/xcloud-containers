@@ -4,7 +4,8 @@
 # Imagem otimizada para desenvolvimento Python no ecossistema xCloud.
 # Inclui Python 3.11, uv, e ferramentas de desenvolvimento comuns.
 # =============================================================================
-FROM ghcr.io/pagecloudv1/xcloud-base:latest
+ARG BASE_IMAGE=ghcr.io/pagecloudv1/xcloud-base:latest
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="xCloud Team <contact@xcloud.com>"
 LABEL description="Optimized Python development image for the xCloud ecosystem."

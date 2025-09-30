@@ -4,7 +4,8 @@
 # Imagem otimizada para desenvolvimento Node.js no ecossistema xCloud.
 # Inclui Node.js 20 e npm.
 # =============================================================================
-FROM ghcr.io/pagecloudv1/xcloud-base:latest
+ARG BASE_IMAGE=ghcr.io/pagecloudv1/xcloud-base:latest
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="xCloud Team <contact@xcloud.com>"
 LABEL description="Optimized Node.js development image for the xCloud ecosystem."
@@ -12,7 +13,7 @@ LABEL version="1.0.0"
 
 # Instala Node.js
 RUN apk add --no-cache \
-    nodejs~=20 \
+    nodejs-current \
     npm \
     && rm -rf /var/cache/apk/*
 

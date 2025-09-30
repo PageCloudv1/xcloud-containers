@@ -19,10 +19,10 @@ on:
 
 jobs:
   publish-python-image:
-    uses: ./.github/workflows/reusable-build-publish.yml@main@main
+    uses: ./.github/workflows/reusable-build-publish.yml
     with:
       image_name: 'xcloud-python'
-      dockerfile_path: './python/Podmanfile'
+      containerfile_path: './python/Podmanfile'
       build_context: './python'
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
