@@ -19,6 +19,9 @@ on:
 
 jobs:
   publish-python-image:
+    permissions:
+      contents: read
+      packages: write
     uses: PageCloudv1/xcloud-containers/.github/workflows/reusable-build-publish.yml@main
     with:
       image_name: 'xcloud-python'
