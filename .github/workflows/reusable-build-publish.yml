@@ -90,6 +90,11 @@ jobs:
           chmod 700 "$RUNTIME_DIR"
           echo "XDG_RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
 
+      - name: 'Set up QEMU emulation for multi-platform builds'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: 'Determine target platforms'
         id: build-platforms
         run: |
