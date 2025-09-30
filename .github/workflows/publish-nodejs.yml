@@ -19,7 +19,7 @@ on:
 
 jobs:
   publish-nodejs-image:
-    uses: ./.github/workflows/reusable-build-publish.yml
+    uses: PageCloudv1/xcloud-containers/.github/workflows/reusable-build-publish.yml@main
     with:
       image_name: 'xcloud-nodejs'
       containerfile_path: './nodejs/Podmanfile'
