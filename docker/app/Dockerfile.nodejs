@@ -1,0 +1,67 @@
+# =============================================================================
+# Multi-stage Dockerfile for Node.js Applications
+# =============================================================================
+# Dockerfile otimizado com multi-stage build para aplicações Node.js
+# Uso: docker build -f Dockerfile.nodejs -t my-app:prod /path/to/app
+# =============================================================================
+
+# Stage 1: Builder - Instala dependências e build
+FROM ghcr.io/pagecloudv1/xcloud-nodejs:latest AS builder
+
+USER root
+WORKDIR /build
+
+# Copia arquivos de dependências primeiro (melhor cache)
+COPY package*.json ./
+
+# Instala todas as dependências
+RUN npm ci && npm cache clean --force
+
+# Copia código fonte
+COPY . .
+
+# Executa build se o script existir no package.json
+RUN npm run build 2>/dev/null || echo "No build script found, using source"
+
+# Stage 2: Production Dependencies
+FROM ghcr.io/pagecloudv1/xcloud-nodejs:latest AS prod-deps
+
+USER root
+WORKDIR /build
+
+# Copia apenas arquivos de dependências
+COPY package*.json ./
+
+# Instala apenas dependências de produção
+RUN npm ci --only=production && npm cache clean --force
+
+# Stage 3: Production Image
+FROM ghcr.io/pagecloudv1/xcloud-nodejs:latest AS production
+
+USER root
+WORKDIR /app
+
+# Instala wget para health checks
+RUN apk add --no-cache wget && rm -rf /var/cache/apk/*
+
+# Copia dependências de produção
+COPY --from=prod-deps --chown=xcloud:xcloud /build/node_modules ./node_modules
+
+# Copia package.json
+COPY --chown=xcloud:xcloud package*.json ./
+
+# Copia código da aplicação do builder
+COPY --from=builder --chown=xcloud:xcloud /build ./
+
+USER xcloud
+
+# Expõe porta padrão
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Comando padrão
+# Usa npm start definido no package.json ou node src/index.js como fallback
+CMD ["sh", "-c", "npm start || node src/index.js"]

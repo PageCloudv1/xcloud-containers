@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: xcloud-nodejs-service
+  namespace: xcloud
+  labels:
+    app: xcloud-nodejs
+spec:
+  type: ClusterIP
+  selector:
+    app: xcloud-nodejs
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  sessionAffinity: ClientIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xcloud-python-service
+  namespace: xcloud
+  labels:
+    app: xcloud-python
+spec:
+  type: ClusterIP
+  selector:
+    app: xcloud-python
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  sessionAffinity: ClientIP
