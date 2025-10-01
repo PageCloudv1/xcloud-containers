@@ -59,6 +59,7 @@ O repositório inclui infraestrutura completa para desenvolvimento e produção:
 -   **Docker Compose**: Configurações para desenvolvimento local e produção
 -   **Multi-stage Builds**: Dockerfiles otimizados para Node.js e Python
 -   **Nginx**: Reverse proxy configurado com health checks
+-   **Kubernetes**: Manifestos básicos para deploy em clusters K8s
 -   **Exemplos**: Aplicações de exemplo para demonstrar o uso
 
 📖 **[Documentação Completa do Docker](./DOCKER.md)**
@@ -68,6 +69,7 @@ O repositório inclui infraestrutura completa para desenvolvimento e produção:
 ```
 docker/        # Dockerfiles otimizados para produção
 compose/       # Docker Compose para dev e prod
+k8s/           # Kubernetes manifests (deployments, services, ingress)
 examples/      # Aplicações de exemplo
 ```
 

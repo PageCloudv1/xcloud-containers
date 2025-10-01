@@ -349,6 +349,7 @@ docker scout cves ghcr.io/pagecloudv1/xcloud-nodejs:latest
 - [Multi-stage Builds](https://docs.docker.com/build/building/multi-stage/)
 - [Docker Compose](https://docs.docker.com/compose/)
 - [Health Checks](https://docs.docker.com/engine/reference/builder/#healthcheck)
+- [Kubernetes Manifests](./k8s/README.md) - Para deploy em clusters K8s
 
 ## 🆘 Suporte
 
