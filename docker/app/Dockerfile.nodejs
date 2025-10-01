@@ -2,56 +2,56 @@
 # Multi-stage Dockerfile for Node.js Applications
 # =============================================================================
 # Dockerfile otimizado com multi-stage build para aplicações Node.js
-# Stages: dependencies, build, production
+# Uso: docker build -f Dockerfile.nodejs -t my-app:prod /path/to/app
 # =============================================================================
 
-# Stage 1: Dependencies
-FROM ghcr.io/pagecloudv1/xcloud-nodejs:latest AS dependencies
+# Stage 1: Builder - Instala dependências e build
+FROM ghcr.io/pagecloudv1/xcloud-nodejs:latest AS builder
 
 USER root
+WORKDIR /build
 
-WORKDIR /app
-
-# Copia arquivos de dependências
+# Copia arquivos de dependências primeiro (melhor cache)
 COPY package*.json ./
 
-# Instala dependências de produção
-RUN npm ci --only=production && \
-    npm cache clean --force
-
-# Instala todas as dependências (incluindo dev) para build
-RUN npm ci && \
-    npm cache clean --force
-
-# Stage 2: Build
-FROM dependencies AS build
-
-WORKDIR /app
+# Instala todas as dependências
+RUN npm ci && npm cache clean --force
 
 # Copia código fonte
 COPY . .
 
-# Executa build (se necessário)
-RUN if [ -f "package.json" ] && grep -q "build" package.json; then npm run build; fi
+# Executa build se o script existir no package.json
+RUN npm run build 2>/dev/null || echo "No build script found, using source"
 
-# Stage 3: Production
+# Stage 2: Production Dependencies
+FROM ghcr.io/pagecloudv1/xcloud-nodejs:latest AS prod-deps
+
+USER root
+WORKDIR /build
+
+# Copia apenas arquivos de dependências
+COPY package*.json ./
+
+# Instala apenas dependências de produção
+RUN npm ci --only=production && npm cache clean --force
+
+# Stage 3: Production Image
 FROM ghcr.io/pagecloudv1/xcloud-nodejs:latest AS production
 
 USER root
-
 WORKDIR /app
 
-# Copia apenas dependências de produção do stage 1
-COPY --from=dependencies --chown=xcloud:xcloud /app/node_modules ./node_modules
+# Instala wget para health checks
+RUN apk add --no-cache wget && rm -rf /var/cache/apk/*
 
-# Copia código compilado ou fonte do stage 2
-COPY --from=build --chown=xcloud:xcloud /app/dist ./dist 2>/dev/null || \
-     COPY --from=build --chown=xcloud:xcloud /app/src ./src
+# Copia dependências de produção
+COPY --from=prod-deps --chown=xcloud:xcloud /build/node_modules ./node_modules
+
+# Copia package.json
 COPY --chown=xcloud:xcloud package*.json ./
 
-# Instala wget para health checks
-RUN apk add --no-cache wget && \
-    rm -rf /var/cache/apk/*
+# Copia código da aplicação do builder
+COPY --from=builder --chown=xcloud:xcloud /build ./
 
 USER xcloud
 
@@ -63,4 +63,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:3000/health || exit 1
 
 # Comando padrão
-CMD ["node", "dist/index.js"]
+# Usa npm start definido no package.json ou node src/index.js como fallback
+CMD ["sh", "-c", "npm start || node src/index.js"]
