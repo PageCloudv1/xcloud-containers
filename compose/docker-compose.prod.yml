@@ -1,0 +1,119 @@
+# =============================================================================
+# Docker Compose - Production Environment
+# =============================================================================
+# Configuração otimizada para produção
+# Use: docker-compose -f docker-compose.prod.yml up -d
+# =============================================================================
+version: '3.8'
+
+services:
+  # Serviço de aplicação Node.js (produção)
+  nodejs-app:
+    build:
+      context: ../docker/app
+      dockerfile: Dockerfile.nodejs
+      target: production
+    image: xcloud-nodejs-app:prod
+    container_name: xcloud-nodejs-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - xcloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Serviço de aplicação Python (produção)
+  python-app:
+    build:
+      context: ../docker/app
+      dockerfile: Dockerfile.python
+      target: production
+    image: xcloud-python-app:prod
+    container_name: xcloud-python-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENV=production
+    networks:
+      - xcloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx como reverse proxy
+  nginx:
+    build:
+      context: ../docker/nginx
+      dockerfile: Dockerfile
+    image: xcloud-nginx:prod
+    container_name: xcloud-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - nodejs-app
+      - python-app
+    networks:
+      - xcloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  xcloud-network:
+    driver: bridge
+    name: xcloud-prod-network

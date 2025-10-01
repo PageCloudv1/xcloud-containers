@@ -26,11 +26,49 @@ Todas as imagens são publicadas sob a organização `pagecloudv1`.
 
 ## 🚀 Uso
 
-Para utilizar uma imagem, você pode puxá-la diretamente do GitHub Container Registry:
+### Imagens Base
+
+Para utilizar uma imagem base, você pode puxá-la diretamente do GitHub Container Registry:
 
 ```sh
 # Exemplo para a imagem Node.js
+docker pull ghcr.io/pagecloudv1/xcloud-nodejs:latest
+# ou com Podman
 podman pull ghcr.io/pagecloudv1/xcloud-nodejs:latest
+```
+
+### Docker Compose (Desenvolvimento Local)
+
+Para desenvolvimento local completo com stack de aplicações:
+
+```bash
+cd compose
+docker-compose up -d
+```
+
+Veja a [documentação completa do Docker](./DOCKER.md) para mais informações sobre:
+- Multi-stage builds para produção
+- Docker Compose para desenvolvimento e produção
+- Health checks e monitoramento
+- Troubleshooting
+
+## 🐳 Infraestrutura Docker
+
+O repositório inclui infraestrutura completa para desenvolvimento e produção:
+
+-   **Docker Compose**: Configurações para desenvolvimento local e produção
+-   **Multi-stage Builds**: Dockerfiles otimizados para Node.js e Python
+-   **Nginx**: Reverse proxy configurado com health checks
+-   **Exemplos**: Aplicações de exemplo para demonstrar o uso
+
+📖 **[Documentação Completa do Docker](./DOCKER.md)**
+
+### Estrutura
+
+```
+docker/        # Dockerfiles otimizados para produção
+compose/       # Docker Compose para dev e prod
+examples/      # Aplicações de exemplo
 ```
 
 ## ⚙️ Automação (CI/CD)

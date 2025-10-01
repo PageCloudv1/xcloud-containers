@@ -1,0 +1,64 @@
+# =============================================================================
+# Multi-stage Dockerfile for Python Applications
+# =============================================================================
+# Dockerfile otimizado com multi-stage build para aplicações Python
+# Stages: builder, production
+# =============================================================================
+
+# Stage 1: Builder
+FROM ghcr.io/pagecloudv1/xcloud-python:latest AS builder
+
+USER root
+
+WORKDIR /app
+
+# Copia arquivos de dependências
+COPY requirements*.txt ./
+
+# Cria virtual environment e instala dependências
+RUN python3 -m venv /opt/venv && \
+    . /opt/venv/bin/activate && \
+    pip install --no-cache-dir --upgrade pip && \
+    if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+
+# Copia código fonte
+COPY . .
+
+# Executa qualquer compilação necessária (ex: Cython)
+RUN . /opt/venv/bin/activate && \
+    if [ -f "setup.py" ]; then pip install --no-cache-dir -e .; fi
+
+# Stage 2: Production
+FROM ghcr.io/pagecloudv1/xcloud-python:latest AS production
+
+USER root
+
+WORKDIR /app
+
+# Instala apenas runtime essencial (remove build tools)
+RUN apk add --no-cache \
+    python3~=3.11 \
+    wget \
+    && rm -rf /var/cache/apk/*
+
+# Copia virtual environment do builder
+COPY --from=builder --chown=xcloud:xcloud /opt/venv /opt/venv
+
+# Copia código da aplicação
+COPY --from=builder --chown=xcloud:xcloud /app /app
+
+# Ativa o virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
+ENV VIRTUAL_ENV="/opt/venv"
+
+USER xcloud
+
+# Expõe porta padrão
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:8000/health || exit 1
+
+# Comando padrão para executar aplicação com Uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

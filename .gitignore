@@ -9,3 +9,9 @@ __pycache__/
 
 # Node dependencies
 node_modules/
+
+# Docker volumes and SSL
+compose/ssl/
+*.pem
+*.key
+*.crt
